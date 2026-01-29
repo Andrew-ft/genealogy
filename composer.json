@@ -8,7 +8,9 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Test\\Genealogy\\": "src/"
+            "Test\\Genealogy\\": "src/",
+            "App\\": "app/",
+            "CustomRouter\\": "src/"
         }
     },
     "authors": [
