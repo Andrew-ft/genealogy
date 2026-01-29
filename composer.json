@@ -1,0 +1,22 @@
+{
+    "name": "test/genealogy",
+    "description": "Client Hierarchial Structure",
+    "type": "project",
+    "require-dev": {
+        "ukingsley/customrouter": "^1.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Test\\Genealogy\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "benz-19",
+            "email": "kingsleyikenna2019@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}

@@ -1,0 +1,51 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "b75b1feb1674b6a3ebbb56dbb6cd3f28",
+    "packages": [],
+    "packages-dev": [
+        {
+            "name": "ukingsley/customrouter",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Benz-19/customRouter.git",
+                "reference": "f6957bac47c912a66dde65fc573ea52ba1862cd4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Benz-19/customRouter/zipball/f6957bac47c912a66dde65fc573ea52ba1862cd4",
+                "reference": "f6957bac47c912a66dde65fc573ea52ba1862cd4",
+                "shasum": ""
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "App\\": "app/",
+                    "CustomRouter\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "A Laravel-style routing package for PHP",
+            "support": {
+                "issues": "https://github.com/Benz-19/customRouter/issues",
+                "source": "https://github.com/Benz-19/customRouter/tree/v1.0.0"
+            },
+            "time": "2025-06-06T22:56:27+00:00"
+        }
+    ],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {},
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}
