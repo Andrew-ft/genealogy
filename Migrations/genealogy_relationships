@@ -1,0 +1,8 @@
+CREATE TABLE genealogy_relationships (
+    ancestor_id INT NOT NULL,   -- Upline
+    descendant_id INT NOT NULL, -- Downline
+    depth INT NOT NULL,         
+    PRIMARY KEY (ancestor_id, descendant_id),
+    FOREIGN KEY (ancestor_id) REFERENCES genealogy_users(id),
+    FOREIGN KEY (descendant_id) REFERENCES genealogy_users(id)
+);

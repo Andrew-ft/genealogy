@@ -17,7 +17,7 @@ class DB{
          error_log('Error: Ensure the database config file exists in the config directory');
        }
 
-       $db_config = $db_config_file_path;
+       $db_config = require $db_config_file_path;
 
        if(empty($db_config)){
          throw new \Exception('Database configuration file does not contain any value...');
@@ -25,7 +25,7 @@ class DB{
        }
 
        try{
-        $dsn = "mysql:host{$db_config['db_host']};dbname{$db_config['db_name']};port{$db_config['port']};charset{$db_config['charset']}";
+        $dsn = "mysql:host={$db_config['db_host']};dbname={$db_config['db_name']};port={$db_config['port']};charset={$db_config['charset']};";
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -147,5 +147,26 @@ class DB{
         }catch(Exception $error){
         error_log('Error: Something went wrong at DB::fetchColumn. ErrorType: ' . $error->getMessage());
        };
+    }
+
+    // Starts a transaction
+    public function beginTransaction() {
+        $this->verifyConnection();
+        return $this->conn->beginTransaction();
+    }
+
+    // Commits the changes
+    public function commit() {
+        return $this->conn->commit();
+    }
+
+    // Undoes changes if something fails
+    public function rollBack() {
+        return $this->conn->rollBack();
+    }
+
+    // Getting the ID of the user just inserted
+    public function lastInsertId() {
+        return $this->conn->lastInsertId();
     }
 }
