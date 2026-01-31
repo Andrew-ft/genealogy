@@ -3,6 +3,8 @@ namespace App\Services\Auth;
 
 use App\Services\Auth\AuthServiceInterface;
 use App\Models\Database\DB;
+use App\Services\Referral\ReferralService;
+use App\Services\User\UserService;
 use Exception;
 
 class AuthService implements AuthServiceInterface {
@@ -13,7 +15,7 @@ class AuthService implements AuthServiceInterface {
     }
 
     // REGISTER
-    public function register(array $data, ?string $referralCode): bool {
+    public function register(array $data, ?string $providedReferralCode): bool {
         if (empty($data['username'])) {
                 throw new Exception("Username is required.");
             }
@@ -21,31 +23,51 @@ class AuthService implements AuthServiceInterface {
             throw new Exception("Email address cannot be blank.");
         }
 
-        try {
-            $this->db->beginTransaction();
+       try {
+           $this->db->beginTransaction();
 
-            //Create the user
-            $query = "INSERT INTO genealogy_users (username, email, referral_code) VALUES (:u, :e, :r)";
-            $params = [
-                ':u' => $data['username'],
-                ':e' => $data['email'],
-                ':r' => $referralCode
-            ];
+            //Check if the user already exists
+            $user = new UserService();
+            $is_user = $user->isUser($data['email']);
 
-            $success = $this->db->execute($query, $params);
+            if($is_user == true || $is_user !== null){
+                throw new Exception("User already exists.");                
+            }
+            // Validate if the code exists
+            $referral_service = new ReferralService();
+            $code_exists = $referral_service->validateCode($providedReferralCode);
 
-            if (!$success) {
-                throw new Exception("Database insertion failed.");
+            if(!$code_exists && !empty($providedReferralCode)){
+                throw new Exception("Invalid code.");               
             }
 
-            //Commit
+            //Find REFERRER user (old/existing user) based on the code provided
+            $referrerId = null;
+            if (!empty($providedReferralCode)) {
+                $referrer = $this->db->fetchSingleData("SELECT id FROM genealogy_users WHERE referral_code = :code", [
+                    ':code' => $providedReferralCode
+                ]);
+                $referrerId = $referrer ? $referrer['id'] : null;
+            }
+
+            //Generate a NEW unique code for the new User
+            $myNewCode = $referral_service->generateUniqueCode();
+
+            $query = "INSERT INTO genealogy_users (username, email, referral_code, referrer_id) 
+                    VALUES (:u, :e, :my_code, :ref_id)";
+            
+            $this->db->execute($query, [
+                ':u' => $data['username'],
+                ':e' => $data['email'],
+                ':my_code' => $myNewCode,
+                ':ref_id' => $referrerId
+            ]);
+
             $this->db->commit();
             return true;
-
-        } catch (Exception $error) {
+        } catch (Exception $e) {
             $this->db->rollBack();
-            error_log("Registration Error: " . $error->getMessage());
-            return false;
+            throw $e;
         }
     }
 

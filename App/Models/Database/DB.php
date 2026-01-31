@@ -149,6 +149,23 @@ class DB{
        };
     }
 
+
+    public function fetchAllColumn(string $query, array $params = []): array 
+{
+    try {
+        $this->verifyConnection();
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute($params);
+        
+        // This returns ALL rows as a flat array like [ 'CODE1', 'CODE2', 'CODE3' ]
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        
+    } catch (PDOException $error) {
+        error_log('DB::fetchAllColumn Error: ' . $error->getMessage());
+        return [];
+    }
+}
+
     // Starts a transaction
     public function beginTransaction() {
         $this->verifyConnection();
