@@ -3,15 +3,18 @@ namespace App\Services\Auth;
 
 use App\Services\Auth\AuthServiceInterface;
 use App\Models\Database\DB;
+use App\Services\Genealogy\GenealogyService;
 use App\Services\Referral\ReferralService;
 use App\Services\User\UserService;
 use Exception;
 
 class AuthService implements AuthServiceInterface {
     private $db;
+    private $genealogy_service;
 
     public function __construct() {
         $this->db = new DB(); //establish db connection
+        $this->genealogy_service = new GenealogyService();
     }
 
     // REGISTER
@@ -51,7 +54,7 @@ class AuthService implements AuthServiceInterface {
             }
 
             //Generate a NEW unique code for the new User
-            $myNewCode = $referral_service->generateUniqueCode();
+            $myNewCode = $referral_service->generateUniqueCode($data['username']);
 
             $query = "INSERT INTO genealogy_users (username, email, referral_code, referrer_id) 
                     VALUES (:u, :e, :my_code, :ref_id)";
@@ -62,6 +65,17 @@ class AuthService implements AuthServiceInterface {
                 ':my_code' => $myNewCode,
                 ':ref_id' => $referrerId
             ]);
+
+            $db_id = $this->db->fetchSingleData("SELECT id FROM genealogy_users WHERE email=:e", [":e"=>$data['email']]);
+            $new_user_id = $db_id['id'];
+            // Create a link
+            if(!empty($referrerId) || $referrerId !== null){
+                // Self-relationship (depth 0) and Inherit ancestors from the upline
+                
+                $this->genealogy_service->linkMember($referrerId, $new_user_id);
+                }else{
+                    throw new Exception("Failed to create new upline - downlint link.");
+            }
 
             $this->db->commit();
             return true;

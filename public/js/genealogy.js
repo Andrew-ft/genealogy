@@ -19,28 +19,27 @@ function render() {
 
     const currentRoot = currentPath[currentPath.length - 1];
     
-    // Render Breadcrumbs
+    // Breadcrumbs
     const bc = document.getElementById('breadcrumb-trail');
     bc.innerHTML = currentPath.map((node, index) => {
-        // If index is 0, it is the logged-in user
         const displayName = index === 0 ? `${node.name} (You)` : node.name;
         return `<span class="crumb" onclick="goToPath(${index})">${displayName}</span>`;
     }).join('<span class="separator">/</span>');
 
-    // Render Tree
+    // Main Display
     const display = document.getElementById('tree-display');
-    
     display.innerHTML = `
         <div class="node">
-            <strong>${currentRoot.name} (ID: ${currentRoot.id})</strong>
-            <div class="meta">Direct Downlines: ${currentRoot.children ? currentRoot.children.length : 0}</div>
+            <strong>${currentPath.length === 1 ? currentRoot.name + ' (You)' : currentRoot.name}</strong>
+            <div class="meta">Network Size: ${currentRoot.network_size}</div>
         </div>
         <div class="children-grid">
             ${(currentRoot.children && currentRoot.children.length > 0) ? 
                 currentRoot.children.map(child => `
                     <div class="node" onclick="drillDown(${child.id})">
                         ${child.name}
-                        <div class="meta">Relative Depth: ${child.depth}</div>
+                        <div class="meta">Depth: ${child.depth}</div>
+                        <div class="meta">Network Size: ${child.network_size}</div>
                     </div>
                 `).join('') : 
                 '<div class="empty-msg">No further downlines</div>'

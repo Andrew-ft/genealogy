@@ -51,9 +51,26 @@ class UserService implements UserServiceInterface{
         throw new \Exception('Not implemented');
     }
 
-    public function getUserById(int $id): ?object
+    public function getUserByEmail(string $email)
     {
-        throw new \Exception('Not implemented');
+        try{
+            $query = "SELECT * FROM genealogy_users WHERE email=:e LIMIT 1";
+            
+            $params = [":e" => $email];
+
+            $id = $this->db->fetchSingleData($query, $params);
+
+            if(!empty($id) && $id !== null){
+                return $id;
+            }else{
+                error_log("Error: Failed to get user details at UserService::getUserByEmail");
+                throw new Exception("User not found!");
+                }
+                
+        }catch(Exception $error){
+            error_log("Error: Failed to get user details at UserService::getUserByEmail");
+            throw $error;
+        };
     }
 
     public function updateProfile(int $userId, array $data): bool

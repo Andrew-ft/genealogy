@@ -90,3 +90,13 @@ body {
     color: var(--primary);
     font-weight: bold;
 }
+
+/* Header */
+header{
+    text-align: center;
+    font-size: x-large;
+}
+
+header span{
+    color:green;
+}

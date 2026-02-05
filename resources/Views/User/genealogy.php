@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/genealogy.css">
 </head>
 <body>
-
+    <header>Welcome <span><?php echo $_SESSION['username'] ?? 'User'?></span></header>
     <div class="breadcrumbs" id="breadcrumb-trail"></div>
     <div id="tree-display" class="node-container">
         <div class="loading">Loading your network...</div>

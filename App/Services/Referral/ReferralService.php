@@ -13,11 +13,15 @@ class ReferralService implements ReferralServiceInterface{
         $this->db = new DB();
     }
 
-    public function generateUniqueCode(): string
+    public function generateUniqueCode(string $username): string
     {
         // Generate codes until we find one that isn't in the DB
         do {
-            $newCode = "REF-" . strtoupper(bin2hex(random_bytes(3)));
+            if(!empty($username)){
+                $newCode = "REF-$username-" . strtoupper(bin2hex(random_bytes(3)));
+                }else{
+                $newCode = "REF-" . strtoupper(bin2hex(random_bytes(3)));
+            }
         } while ($this->validateCode($newCode));
 
         return $newCode;

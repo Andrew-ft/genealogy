@@ -51,7 +51,7 @@ class AuthController extends BaseController{
 
             if($success){
                 $this->renderView("Auth/register", [
-                    "errorMessage" => "Account successfully created."
+                    "successMessage" => "Account successfully created."
                 ]);                
             }else{
 
@@ -85,6 +85,7 @@ class AuthController extends BaseController{
                 if($success === true){
                     $_SESSION['is_logged_in'] = true;
                     $_SESSION['user_id'] = $this->user_service->userId($_POST['email'])['id'];
+                    $_SESSION['username'] = $this->user_service->getUserByEmail($_POST['email'])['username'];
                     header("Location: /genealogy-dashboard?success=1");
                     exit; 
                 }else{
