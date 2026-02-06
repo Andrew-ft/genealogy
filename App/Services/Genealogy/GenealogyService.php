@@ -1,40 +1,54 @@
 <?php
+
 namespace App\Services\Genealogy;
 
 use App\Models\Database\DB;
 use App\Services\Genealogy\GenealogyServiceInterface;
 use Exception;
 
-class GenealogyService implements GenealogyServiceInterface {
+class GenealogyService implements GenealogyServiceInterface
+{
     private $db;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->db = new DB();
     }
 
-    public function linkMember( $uplineId, $downlineId): bool {
+    public function linkMember($uplineId, $downlineId): bool
+    {
         try {
-            // Self-relationship (depth 0)
-            $self_query = "INSERT INTO genealogy_relationships (ancestor_id, descendant_id, depth) 
+            // 1. Every user must have a self-relationship row
+            $self_query = "INSERT IGNORE INTO genealogy_relationships (ancestor_id, descendant_id, depth)
                            VALUES (:id_1, :id_2, 0)";
-            $this->db->execute(
-                $self_query, 
-                [':id_1' => $downlineId,
+            $this->db->execute($self_query, [
+                ':id_1' => $downlineId,
                 ':id_2' => $downlineId
             ]);
 
-            // Inherit ancestors from the upline
-            $link_query = "INSERT INTO genealogy_relationships (ancestor_id, descendant_id, depth)
-                       SELECT ancestor_id, :downline_id, depth + 1 FROM genealogy_relationships WHERE descendant_id = :upline_id";
-
-            $result = $this->db->execute($link_query, [
-                ':downline_id' => $downlineId,
-                ':upline_id' => $uplineId
+            // 2. Direct parent → child link (CRITICAL FIX)
+            $direct_query = "INSERT IGNORE INTO genealogy_relationships (ancestor_id, descendant_id, depth)
+                             VALUES (:upline, :downline, 1)";
+            $this->db->execute($direct_query, [
+                ':upline' => $uplineId,
+                ':downline' => $downlineId
             ]);
 
-            if ($result) {
-                // sync the counts to the genealogy_users table
-                $this->updateNetworkMetadata($uplineId);
+            // 3. Inherit all ancestors from the upline
+            if ($uplineId !== $downlineId) {
+                $link_query = "INSERT INTO genealogy_relationships (ancestor_id, descendant_id, depth)
+                               SELECT ancestor_id, :downline_id, depth + 1 
+                               FROM genealogy_relationships 
+                               WHERE descendant_id = :upline_id";
+
+                $result = $this->db->execute($link_query, [
+                    ':downline_id' => $downlineId,
+                    ':upline_id'   => $uplineId
+                ]);
+
+                if ($result) {
+                    $this->updateNetworkMetadata($uplineId);
+                }
             }
 
             return true;
@@ -44,14 +58,15 @@ class GenealogyService implements GenealogyServiceInterface {
         }
     }
 
-    public function getFullDownline(int $userId): array {
+    public function getFullDownline(int $userId): array
+    {
         try {
             $query = "SELECT u.username, r.depth, r.descendant_id 
                       FROM genealogy_users u
                       INNER JOIN genealogy_relationships r ON r.descendant_id = u.id
                       WHERE r.ancestor_id = :u_id AND r.depth > 0
                       ORDER BY r.depth ASC";
-            
+
             return $this->db->fetchAllData($query, [":u_id" => $userId]) ?: [];
         } catch (Exception $error) {
             error_log("Downline Error: " . $error->getMessage());
@@ -59,7 +74,8 @@ class GenealogyService implements GenealogyServiceInterface {
         }
     }
 
-    public function getFullUpline(int $userId): array {
+    public function getFullUpline(int $userId): array
+    {
         try {
             $query = "SELECT u.username, r.depth, r.ancestor_id 
                       FROM genealogy_users u 
@@ -69,12 +85,13 @@ class GenealogyService implements GenealogyServiceInterface {
 
             return $this->db->fetchAllData($query, [":u_id" => $userId]) ?: [];
         } catch (Exception $error) {
-            error_log("Upline Error: " . $error->getMessage());            
+            error_log("Upline Error: " . $error->getMessage());
             throw $error;
         }
     }
 
-    public function getNetworkStats(int $userId): array {
+    public function getNetworkStats(int $userId): array
+    {
         try {
             $query = "SELECT 
                         COUNT(*) - 1 AS total_network, 
@@ -96,28 +113,29 @@ class GenealogyService implements GenealogyServiceInterface {
         }
     }
 
-    public function getFormattedTree(int $userId): array {
-        // Pull the real columns from the users table
+    public function getFormattedTree(int $userId): array
+    {
         $currentUser = $this->db->fetchSingleData(
-            "SELECT id, username as name, network_size, network_depth FROM genealogy_users WHERE id = :id", 
+            "SELECT id, username as name, network_size, network_depth FROM genealogy_users WHERE id = :id",
             [':id' => $userId]
         );
 
         if (!$currentUser) return [];
 
-        // Get children and their metadata
         $query = "SELECT u.id, u.username as name, u.referrer_id, r.depth, u.network_size
-                FROM genealogy_users u
-                INNER JOIN genealogy_relationships r ON r.descendant_id = u.id
-                WHERE r.ancestor_id = :u_id AND r.depth >= 0";
-        
-        $flatDownline = $this->db->fetchAllData($query, [':u_id' => $userId]);
+                  FROM genealogy_users u
+                  INNER JOIN genealogy_relationships r ON r.descendant_id = u.id
+                  WHERE r.ancestor_id = :u_id AND r.depth >= 0";
+
+        $flatDownline = $this->db->fetchAllData($query, [':u_id' => $userId]) ?: [];
+
         $currentUser['children'] = $this->buildNestedTree($flatDownline, $userId);
-        
+
         return $currentUser;
     }
 
-    private function buildNestedTree(array $items, $parentId): array {
+    private function buildNestedTree(array $items, $parentId): array
+    {
         $branch = [];
         foreach ($items as $item) {
             if ($item['referrer_id'] == $parentId) {
@@ -129,16 +147,15 @@ class GenealogyService implements GenealogyServiceInterface {
         return $branch;
     }
 
-
     public function updateNetworkMetadata(int $uplineId): bool
     {
         try {
             $query = "UPDATE genealogy_users u
-                    INNER JOIN genealogy_relationships r ON r.ancestor_id = u.id
-                    SET 
-                        u.network_size = (SELECT COUNT(*) - 1 FROM genealogy_relationships WHERE ancestor_id = u.id),
-                        u.network_depth = (SELECT IFNULL(MAX(depth), 0) FROM genealogy_relationships WHERE ancestor_id = u.id)
-                    WHERE r.descendant_id = :upline_id";
+                      INNER JOIN genealogy_relationships r ON r.ancestor_id = u.id
+                      SET 
+                          u.network_size = (SELECT COUNT(*) - 1 FROM genealogy_relationships WHERE ancestor_id = u.id),
+                          u.network_depth = (SELECT IFNULL(MAX(depth), 0) FROM genealogy_relationships WHERE ancestor_id = u.id)
+                      WHERE r.descendant_id = :upline_id";
 
             return $this->db->execute($query, [':upline_id' => $uplineId]);
         } catch (Exception $e) {

@@ -1,0 +1,1 @@
+[06-Feb-2026 17:55:31 UTC] Failed to execute query at DB::execute. ErrorType: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '1-2-1' for key 'PRIMARY'

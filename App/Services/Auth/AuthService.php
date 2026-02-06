@@ -76,13 +76,15 @@ class AuthService implements AuthServiceInterface
 
             $db_id = $this->db->fetchSingleData("SELECT id FROM genealogy_users WHERE email=:e", [":e" => $data['email']]);
             $new_user_id = $db_id['id'];
-            $this->genealogy_service->linkMember($new_user_id, $new_user_id);
-            // Create a link
+            // Create genealogy links
             if (!empty($referrerId)) {
-                // Self-relationship (depth 0) and Inherit ancestors from the upline
-
+                // User has a referrer → link to referrer only
                 $this->genealogy_service->linkMember($referrerId, $new_user_id);
+            } else {
+                // No referrer → create only the self-relationship
+                $this->genealogy_service->linkMember($new_user_id, $new_user_id);
             }
+
 
             $this->db->commit();
             return true;

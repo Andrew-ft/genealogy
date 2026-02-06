@@ -108,18 +108,15 @@ class AuthController extends BaseController
     }
 
     public function logout()
-{
-    try {
+    {
+        // Call the service to handle session + cleanup
         $this->auth_service->logout();
 
-        header("Location: /login?logged_out=1");
+        // Extra safety: make sure login flag is removed
+        unset($_SESSION["is_logged_in"]);
+
+        // Redirect to login page
+        header("Location: /login");
         exit;
-
-    } catch (Exception $e) {
-        $this->renderView('Auth/login', [
-            'errorMessage' => "Logout failed: " . $e->getMessage()
-        ]);
     }
-}
-
 }

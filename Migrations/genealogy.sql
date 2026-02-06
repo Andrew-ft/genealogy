@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `genealogy_relationships` (
   `ancestor_id` int NOT NULL,
   `descendant_id` int NOT NULL,
   `depth` int NOT NULL,
-  PRIMARY KEY (`ancestor_id`,`descendant_id`),
+  PRIMARY KEY (`ancestor_id`,`descendant_id`, `depth`),
   KEY `descendant_id` (`descendant_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
