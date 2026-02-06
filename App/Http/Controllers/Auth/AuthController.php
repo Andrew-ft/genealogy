@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Auth;
 
 use App\Services\Auth\AuthService;
@@ -6,7 +7,8 @@ use App\Core\BaseController;
 use App\Services\User\UserService;
 use Exception;
 
-class AuthController extends BaseController{
+class AuthController extends BaseController
+{
     private $auth_service;
     private $user_service;
 
@@ -16,28 +18,33 @@ class AuthController extends BaseController{
         $this->user_service = new UserService();
     }
 
-    public function showLoginPage(){
+    public function showLoginPage()
+    {
         $this->renderView('Auth/login');
     }
 
-    public function showRegisterPage(){
+    public function showRegisterPage()
+    {
         $this->renderView('Auth/register');
     }
 
 
-    public function register(){
+    public function register()
+    {
         // Ensure the right request is received
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                $this->renderView('Auth/register');
-                return;
+            $this->renderView('Auth/register');
+            return;
         }
 
         try {
-            if(empty($_POST['email']) || empty($_POST['username']) || empty($_POST['password'])){
-                $this->renderView("Auth\register", [
-                    "errorMessage" => "Ensure all fields are filled."
-                ]);
-            }
+            // if (empty($_POST['email']) || empty($_POST['username']) || empty($_POST['password'])) {
+            //    $this->renderView("Auth/register", [
+            //        "errorMessage" => "Ensure all fields are filled.",
+            //        "oldInput" => $_POST
+            //    ]);
+            //    return;
+            //}
 
             // Register a new user
             $data = [
@@ -49,18 +56,19 @@ class AuthController extends BaseController{
             $referral_code = $_POST['referral_code'];
             $success = $this->auth_service->register($data, $referral_code);
 
-            if($success){
+            if ($success) {
                 $this->renderView("Auth/register", [
                     "successMessage" => "Account successfully created."
-                ]);                
-            }else{
+                ]);
+                return;
+            } else {
 
                 // Redirect if with error message
                 $this->renderView("Auth/register", [
                     "errorMessage" => "Something went wrong. Try again."
                 ]);
-            }            
-
+                return;
+            }
         } catch (\Exception $error) {
             $this->renderView(
                 "Auth/register",
@@ -69,38 +77,49 @@ class AuthController extends BaseController{
                     "oldInput" => $_POST
                 ]
             );
+            return;
         }
     }
 
-    public function login(){
-        // Ensure the right request is received
+    public function login()
+    {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                $this->renderView('Auth/login');
-                return;
+            $this->renderView('Auth/login');
+            return;
         }
 
         try {
-                // Login user
-                $success = $this->auth_service->login($_POST['email'] ?? '', $_POST['password'] ?? '');
-                if($success === true){
-                    $_SESSION['is_logged_in'] = true;
-                    $_SESSION['user_id'] = $this->user_service->userId($_POST['email'])['id'];
-                    $_SESSION['username'] = $this->user_service->getUserByEmail($_POST['email'])['username'];
-                    header("Location: /genealogy-dashboard?success=1");
-                    exit; 
-                }else{
-                    $this->renderView('Auth/login', [
-                    'errorMessage' => "User does not exists",
-                    'oldInput' => $_POST
-                    ]);
-                }
+            $success = $this->auth_service->login($_POST['email'] ?? '', $_POST['password'] ?? '');
 
-            } catch (Exception $e) {
-                // use renderView to keep data and show the error
-                $this->renderView('Auth/register', [
-                    'errorMessage' => $e->getMessage(),
-                    'oldInput' => $_POST
-                ]);
+            if ($success === true) {
+                $_SESSION['is_logged_in'] = true;
+                $_SESSION['user_id'] = $this->user_service->userId($_POST['email'])['id'];
+                $_SESSION['username'] = $this->user_service->getUserByEmail($_POST['email'])['username'];
+                header("Location: /genealogy-dashboard?success=1");
+                exit;
             }
+        } catch (Exception $e) {
+            $this->renderView('Auth/login', [
+                'errorMessage' => $e->getMessage(),
+                'oldInput' => $_POST
+            ]);
+            return;
+        }
     }
+
+    public function logout()
+{
+    try {
+        $this->auth_service->logout();
+
+        header("Location: /login?logged_out=1");
+        exit;
+
+    } catch (Exception $e) {
+        $this->renderView('Auth/login', [
+            'errorMessage' => "Logout failed: " . $e->getMessage()
+        ]);
+    }
+}
+
 }

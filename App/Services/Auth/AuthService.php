@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services\Auth;
 
 use App\Services\Auth\AuthServiceInterface;
@@ -8,40 +9,47 @@ use App\Services\Referral\ReferralService;
 use App\Services\User\UserService;
 use Exception;
 
-class AuthService implements AuthServiceInterface {
+class AuthService implements AuthServiceInterface
+{
     private $db;
     private $genealogy_service;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->db = new DB(); //establish db connection
         $this->genealogy_service = new GenealogyService();
     }
 
     // REGISTER
-    public function register(array $data, ?string $providedReferralCode): bool {
+    public function register(array $data, ?string $providedReferralCode): bool
+    {
         if (empty($data['username'])) {
-                throw new Exception("Username is required.");
-            }
+            throw new Exception("Username is required.");
+        }
         if (empty($data['email'])) {
             throw new Exception("Email address cannot be blank.");
         }
+        if (empty($data['password'])) {
+            throw new Exception("Password is required.");
+        }
 
-       try {
-           $this->db->beginTransaction();
+
+        try {
+            $this->db->beginTransaction();
 
             //Check if the user already exists
             $user = new UserService();
             $is_user = $user->isUser($data['email']);
 
-            if($is_user === true){
-                throw new Exception("User already exists.");                
+            if ($is_user === true) {
+                throw new Exception("User already exists.");
             }
             // Validate if the code exists
             $referral_service = new ReferralService();
             $code_exists = $referral_service->validateCode($providedReferralCode);
 
-            if(!$code_exists && !empty($providedReferralCode)){
-                throw new Exception("Invalid code.");               
+            if (!$code_exists && !empty($providedReferralCode)) {
+                throw new Exception("Invalid code.");
             }
 
             //Find REFERRER user (old/existing user) based on the code provided
@@ -58,7 +66,7 @@ class AuthService implements AuthServiceInterface {
 
             $query = "INSERT INTO genealogy_users (username, email, referral_code, referrer_id) 
                     VALUES (:u, :e, :my_code, :ref_id)";
-            
+
             $this->db->execute($query, [
                 ':u' => $data['username'],
                 ':e' => $data['email'],
@@ -66,15 +74,14 @@ class AuthService implements AuthServiceInterface {
                 ':ref_id' => $referrerId
             ]);
 
-            $db_id = $this->db->fetchSingleData("SELECT id FROM genealogy_users WHERE email=:e", [":e"=>$data['email']]);
+            $db_id = $this->db->fetchSingleData("SELECT id FROM genealogy_users WHERE email=:e", [":e" => $data['email']]);
             $new_user_id = $db_id['id'];
+            $this->genealogy_service->linkMember($new_user_id, $new_user_id);
             // Create a link
-            if(!empty($referrerId) || $referrerId !== null){
+            if (!empty($referrerId)) {
                 // Self-relationship (depth 0) and Inherit ancestors from the upline
-                
+
                 $this->genealogy_service->linkMember($referrerId, $new_user_id);
-                }else{
-                    throw new Exception("Failed to create new upline - downlint link.");
             }
 
             $this->db->commit();
@@ -88,33 +95,57 @@ class AuthService implements AuthServiceInterface {
     // LOGIN
     public function login(string $email, string $password): bool
     {
-        // IMPORTANT NOTE, $password does nothing
-        if(empty($email) || empty($password)){
-            return false;
+        if (empty($email)) {
+            throw new Exception("Email address cannot be blank.");
         }
-        try{
+
+        if (empty($password)) {
+            throw new Exception("Password is required.");
+        }
+
+        try {
             $this->db->beginTransaction();
+
             $query = "SELECT * FROM genealogy_users WHERE email=:e";
-            $params = [':e' => $email]; 
+            $params = [':e' => $email];
             $result = $this->db->fetchSingleData($query, $params);
 
-            if(!$result){
-                throw new Exception("User does not exists.");
+            if (!$result) {
+                throw new Exception("User does not exist.");
             }
 
-            // commit
+            // No password stored yet → treat all passwords as correct
             $this->db->commit();
-            return true; 
-        }catch(Exception $error){
+            return true;
+        } catch (Exception $error) {
             $this->db->rollBack();
-            error_log("Login Error: " . $error->getMessage());
-            return false;
+            throw $error;
         }
     }
+
 
     // LOGOUT
     public function logout(): void
     {
-        throw new \Exception('Not implemented yet');
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $_SESSION = [];
+
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params["path"],
+                $params["domain"],
+                $params["secure"],
+                $params["httponly"]
+            );
+        }
+
+        session_destroy();
     }
 }
